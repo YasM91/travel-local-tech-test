@@ -22,7 +22,13 @@ describe('ConfirmPayStep', () => {
   describe('Pay button gating', () => {
     it('disables the Pay button when all card fields are empty', () => {
       render(
-        <ConfirmPayStep data={MOCK_DATA} trip={MOCK_TRIP} onPaymentSuccess={vi.fn()} payDelay={0} />
+        <ConfirmPayStep
+          data={MOCK_DATA}
+          trip={MOCK_TRIP}
+          onPaymentSuccess={vi.fn()}
+          payDelay={0}
+          onBack={vi.fn()}
+        />
       )
       expect(screen.getByRole('button', { name: /^pay/i }).hasAttribute('disabled')).toBe(true)
     })
@@ -30,7 +36,13 @@ describe('ConfirmPayStep', () => {
     it('keeps Pay disabled when only the card number is filled', async () => {
       const user = userEvent.setup()
       render(
-        <ConfirmPayStep data={MOCK_DATA} trip={MOCK_TRIP} onPaymentSuccess={vi.fn()} payDelay={0} />
+        <ConfirmPayStep
+          data={MOCK_DATA}
+          trip={MOCK_TRIP}
+          onPaymentSuccess={vi.fn()}
+          payDelay={0}
+          onBack={vi.fn()}
+        />
       )
       await user.type(screen.getByLabelText(/card number/i), '4111111111111111')
       expect(screen.getByRole('button', { name: /^pay/i }).hasAttribute('disabled')).toBe(true)
@@ -39,7 +51,13 @@ describe('ConfirmPayStep', () => {
     it('keeps Pay disabled with a card number shorter than 13 digits', async () => {
       const user = userEvent.setup()
       render(
-        <ConfirmPayStep data={MOCK_DATA} trip={MOCK_TRIP} onPaymentSuccess={vi.fn()} payDelay={0} />
+        <ConfirmPayStep
+          data={MOCK_DATA}
+          trip={MOCK_TRIP}
+          onPaymentSuccess={vi.fn()}
+          payDelay={0}
+          onBack={vi.fn()}
+        />
       )
       await user.type(screen.getByLabelText(/card number/i), '411111111111') // 12 digits
       await user.type(screen.getByLabelText(/expiry/i), '12/28')
@@ -50,7 +68,13 @@ describe('ConfirmPayStep', () => {
     it('enables the Pay button when all card fields are validly filled', async () => {
       const user = userEvent.setup()
       render(
-        <ConfirmPayStep data={MOCK_DATA} trip={MOCK_TRIP} onPaymentSuccess={vi.fn()} payDelay={0} />
+        <ConfirmPayStep
+          data={MOCK_DATA}
+          trip={MOCK_TRIP}
+          onPaymentSuccess={vi.fn()}
+          payDelay={0}
+          onBack={vi.fn()}
+        />
       )
       await user.type(screen.getByLabelText(/card number/i), '4111111111111111')
       await user.type(screen.getByLabelText(/expiry/i), '12/28')
@@ -69,6 +93,7 @@ describe('ConfirmPayStep', () => {
           trip={MOCK_TRIP}
           onPaymentSuccess={onPaymentSuccess}
           payDelay={0}
+          onBack={vi.fn()}
         />
       )
       await user.type(screen.getByLabelText(/card number/i), '4111111111111111')
@@ -82,14 +107,26 @@ describe('ConfirmPayStep', () => {
   describe('Booking summary', () => {
     it('renders the trip title in the summary', () => {
       render(
-        <ConfirmPayStep data={MOCK_DATA} trip={MOCK_TRIP} onPaymentSuccess={vi.fn()} payDelay={0} />
+        <ConfirmPayStep
+          data={MOCK_DATA}
+          trip={MOCK_TRIP}
+          onPaymentSuccess={vi.fn()}
+          payDelay={0}
+          onBack={vi.fn()}
+        />
       )
       expect(screen.getByText('Hidden Gems of Kyoto')).not.toBeNull()
     })
 
     it('renders the traveller full name in the summary', () => {
       render(
-        <ConfirmPayStep data={MOCK_DATA} trip={MOCK_TRIP} onPaymentSuccess={vi.fn()} payDelay={0} />
+        <ConfirmPayStep
+          data={MOCK_DATA}
+          trip={MOCK_TRIP}
+          onPaymentSuccess={vi.fn()}
+          payDelay={0}
+          onBack={vi.fn()}
+        />
       )
       expect(screen.getByText('Jane Smith')).not.toBeNull()
     })
@@ -129,7 +166,13 @@ describe('ConfirmPayStep', () => {
   describe('Focus management (WCAG 2.4.3)', () => {
     it('moves focus to the section on mount', () => {
       render(
-        <ConfirmPayStep data={MOCK_DATA} trip={MOCK_TRIP} onPaymentSuccess={vi.fn()} payDelay={0} />
+        <ConfirmPayStep
+          data={MOCK_DATA}
+          trip={MOCK_TRIP}
+          onPaymentSuccess={vi.fn()}
+          payDelay={0}
+          onBack={vi.fn()}
+        />
       )
       const section = screen.getByRole('region', { name: /review & pay/i })
       expect(document.activeElement).toBe(section)
