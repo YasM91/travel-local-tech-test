@@ -114,7 +114,7 @@ Added a `numberOfTravellers` field to `TravellerDetailsSchema` and the form. Key
 
 ## 🚀 What I'd Improve for Production
 
-- **Real API call + server-side validation:** The current `onSubmit` fires a simulated delay and `console.log`s the payload — intentionally, as per the brief. In production this would be a `fetch` to `pages/api/bookings.ts`. `TravellerDetailsSchema` is already in `lib/schemas/traveller.ts` and would be imported by both the client form and the API route — the same Zod constraints enforced at both boundaries.
+- **Real API call + server-side validation:** The current `onSubmit` fires a simulated delay and `console.log`s the payload — intentionally, as per the brief. In production this would be a `fetch` to `pages/api/bookings.ts`. `TravellerDetailsSchema` is already in `lib/schemas/traveller.ts` and would be imported by both the client form and the API route — the same Zod constraints enforced at both boundaries. Use try/catch for proper error handling.
 - **Real payment integration:** `ConfirmPayStep` would be replaced with a Stripe Elements embed (or equivalent). The card fields are intentionally fake — the validation regex and UI are a fidelity placeholder only.
 - **URL-synced step state:** Sync `currentStep` to URL query params (`?step=2`) so users can share links, refresh without losing their place, and use the browser back button naturally. In Pages Router this is a straightforward `useRouter` change.
 - **Form persistence:** A `beforeunload` listener + `sessionStorage` write would preserve draft field values if the user navigates away accidentally. The Zod schema validates the stored shape before rehydrating — stale or structurally corrupt storage data is a real failure mode.
@@ -122,7 +122,9 @@ Added a `numberOfTravellers` field to `TravellerDetailsSchema` and the form. Key
 - **Error boundary:** A React error boundary around each step component would catch unexpected runtime errors and render a graceful fallback.
 - **Masked card input:** A masked-input library (e.g. `react-input-mask`) would auto-format the card number as `4242 4242 4242 4242` and the expiry as `12 / 28`, reducing friction and eliminating the need for the user to know the exact format the validation regex expects.
 - **Booking reference:** The success screen should display a server-generated booking reference so the user has something to quote if they contact support.
-- End-to-End Type Safety: I would implement Zod-to-TS or a shared Monorepo package so the backend API and frontend form share the exact same Zod schema, ensuring that a change in the database requirement (e.g., making 'Phone' optional again) would trigger a TypeScript error in the frontend immediately.
+- **End-to-End Type Safety:** I would implement Zod-to-TS or a shared Monorepo package so the backend API and frontend form share the exact same Zod schema, ensuring that a change in the database requirement (e.g., making 'Phone' optional again) would trigger a TypeScript error in the frontend immediately.
+- **react Query:** use react-query for caching and retry api calls
+- **Logging:** use sentry for logging and google mtag manager or amplitude for metrics.
 
 ## Payment UI & Input Masking (Future Implementation)
 
