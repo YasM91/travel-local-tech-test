@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { z } from 'zod'
 import StepIndicator, { type Step } from '../components/StepIndicator'
+import TravellerForm, { type TravellerDetailsFormData } from '../components/TravellerForm'
+import SuccessMessage from '../components/SuccessMessage'
 
 // ---------------------------------------------------------------------------
 // Zod schema — parse (not just validate) so only schema-valid data reaches
@@ -64,33 +67,39 @@ const CURRENT_STEP = 2
 // ---------------------------------------------------------------------------
 export default function BookingPage({
   trip,
+  defaults,
   promoMessage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [submittedData, setSubmittedData] = useState<TravellerDetailsFormData | null>(null)
+
   return (
     <main className="min-h-screen py-10 px-4">
       <div className="card animate-fade-in">
-        {/* Step indicator */}
         <StepIndicator steps={BOOKING_STEPS} currentStep={CURRENT_STEP} />
 
-        {/* Trip summary */}
-        <section aria-labelledby="trip-summary-heading" className="mt-8">
-          <h1 id="trip-summary-heading" className="text-2xl font-bold text-gray-900 tracking-tight">
-            {trip.title}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">{trip.destination}</p>
+        {submittedData ? (
+          <SuccessMessage data={submittedData} tripTitle={trip.title} />
+        ) : (
+          <>
+            <section aria-labelledby="trip-summary-heading" className="mt-8">
+              <h1
+                id="trip-summary-heading"
+                className="text-2xl font-bold text-gray-900 tracking-tight"
+              >
+                {trip.title}
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">{trip.destination}</p>
+              <p
+                role="status"
+                className="mt-4 inline-block rounded-lg bg-brand-faint text-brand px-3 py-1.5 text-sm font-medium"
+              >
+                {promoMessage}
+              </p>
+            </section>
 
-          <p
-            role="status"
-            className="mt-4 inline-block rounded-lg bg-brand-faint text-brand px-3 py-1.5 text-sm font-medium"
-          >
-            {promoMessage}
-          </p>
-        </section>
-
-        {/* Phase 3 placeholder */}
-        <p className="mt-8 text-sm text-gray-400">
-          Step 2: Traveller Details form — coming in Phase 3.
-        </p>
+            <TravellerForm defaults={defaults} onSuccess={setSubmittedData} />
+          </>
+        )}
       </div>
     </main>
   )
