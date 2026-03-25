@@ -10,15 +10,13 @@ const BASE_PROPS: BookingPageProps = {
     durationDays: 10,
     pricePerPersonGbp: 2499,
   },
-  defaults: { firstName: '', lastName: '', email: '', phone: '' },
+  defaults: { firstName: '', lastName: '', email: '', phone: '', numberOfTravellers: 1 },
   promoMessage: 'Book before 30 April 2026 and save 10%.',
 }
 
 // ---------------------------------------------------------------------------
-// getServerSideProps — covers the previously uncovered lines 34-51
+// getServerSideProps
 // ---------------------------------------------------------------------------
-// Helper: resolves the props shape from getServerSideProps, bypassing the
-// `T | Promise<T>` union that Next.js uses for async props support.
 async function resolveGSP() {
   const result = await getServerSideProps({} as GetServerSidePropsContext)
   const { props } = result as { props: BookingPageProps }
@@ -34,9 +32,15 @@ describe('getServerSideProps', () => {
     expect(props.trip.pricePerPersonGbp).toBe(2499)
   })
 
-  it('returns empty string defaults for all form fields', async () => {
+  it('returns empty string defaults for text fields and 1 for numberOfTravellers', async () => {
     const props = await resolveGSP()
-    expect(props.defaults).toEqual({ firstName: '', lastName: '', email: '', phone: '' })
+    expect(props.defaults).toEqual({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      numberOfTravellers: 1,
+    })
   })
 
   it('returns the promo message', async () => {
@@ -102,17 +106,21 @@ describe('BookingPage', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // Full flow integration — fill form → submit → assert success + step advance
-  // Uses submitDelay via TravellerForm's default (bypassed via fast userEvent)
+  // Full flow integration
+  // Step 2 (TravellerForm) → Step 3 (ConfirmPayStep) → Booking confirmed
   // ---------------------------------------------------------------------------
   describe('Full booking flow integration', () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     afterAll(() => consoleSpy.mockRestore())
 
-    async function completeForm() {
+    // Pin Math.random above the 5% failure threshold so the simulated network
+    // error never fires during integration tests that exercise the happy path.
+    beforeEach(() => vi.spyOn(Math, 'random').mockReturnValue(0.99))
+    afterEach(() => vi.restoreAllMocks())
+
+    /** Fills the traveller form and clicks "Continue to Payment". Returns the user instance. */
+    async function fillAndSubmitForm() {
       const user = userEvent.setup()
-      // Render with submitDelay=0 passed through to TravellerForm via booking page
-      // We test the component tree; the 1s delay is a UX concern not a logic concern.
       render(<BookingPage {...BASE_PROPS} />)
 
       await user.type(screen.getByLabelText(/first name/i), 'Jane')
@@ -120,19 +128,33 @@ describe('BookingPage', () => {
       await user.type(screen.getByLabelText(/email address/i), 'jane@example.com')
       await user.type(screen.getByLabelText(/phone number/i), '+44 7700 900000')
       await user.click(screen.getByRole('button', { name: /continue to payment/i }))
+      return user
     }
 
-    it('shows the SuccessMessage after valid submission', async () => {
-      await completeForm()
+    /**
+     * Fills the card fields in ConfirmPayStep and clicks Pay.
+     * The Pay button is disabled until all three fields pass validation,
+     * so this helper waits for ConfirmPayStep to mount before typing.
+     */
+    async function fillCardAndPay(user: ReturnType<typeof userEvent.setup>) {
+      await waitFor(() => screen.getByLabelText(/card number/i), { timeout: 3000 })
+      await user.type(screen.getByLabelText(/card number/i), '4111111111111111')
+      await user.type(screen.getByLabelText(/expiry/i), '12/28')
+      await user.type(screen.getByLabelText(/cvc/i), '123')
+      await user.click(screen.getByRole('button', { name: /^pay/i }))
+    }
+
+    it('shows the Confirm & Pay step after form submission', async () => {
+      await fillAndSubmitForm()
       await waitFor(
         () =>
-          expect(screen.getByRole('heading', { level: 2, name: /you're all set/i })).not.toBeNull(),
+          expect(screen.getByRole('heading', { level: 2, name: /review & pay/i })).not.toBeNull(),
         { timeout: 3000 }
       )
     })
 
-    it('advances the step indicator to step 3 after submission', async () => {
-      await completeForm()
+    it('advances the step indicator to step 3 after form submission', async () => {
+      await fillAndSubmitForm()
       await waitFor(
         () => {
           const items = screen.getAllByRole('listitem')
@@ -142,8 +164,8 @@ describe('BookingPage', () => {
       )
     })
 
-    it('marks steps 1 and 2 as complete after submission', async () => {
-      await completeForm()
+    it('marks steps 1 and 2 as complete after form submission', async () => {
+      await fillAndSubmitForm()
       await waitFor(
         () => {
           const items = screen.getAllByRole('listitem')
@@ -155,18 +177,67 @@ describe('BookingPage', () => {
       )
     })
 
-    it('displays the submitted name in the success summary', async () => {
-      await completeForm()
-      await waitFor(() => expect(screen.getByText('Jane Smith')).not.toBeNull(), {
-        timeout: 3000,
-      })
-    })
-
-    it('hides the form after submission', async () => {
-      await completeForm()
+    it('hides the traveller form after submission', async () => {
+      await fillAndSubmitForm()
       await waitFor(
         () => expect(screen.queryByRole('form', { name: 'Traveller details' })).toBeNull(),
         { timeout: 3000 }
+      )
+    })
+
+    it('shows booking confirmation after filling card details and clicking Pay', async () => {
+      const user = await fillAndSubmitForm()
+      await fillCardAndPay(user)
+      await waitFor(
+        () =>
+          expect(
+            screen.getByRole('heading', { level: 2, name: /booking confirmed/i })
+          ).not.toBeNull(),
+        { timeout: 4000 }
+      )
+    })
+
+    it('displays the submitted name in the booking confirmation', async () => {
+      const user = await fillAndSubmitForm()
+      await fillCardAndPay(user)
+      await waitFor(() => expect(screen.getByText('Jane Smith')).not.toBeNull(), {
+        timeout: 4000,
+      })
+    })
+
+    it('preserves form data when navigating back from Step 3 to Step 2', async () => {
+      const user = await fillAndSubmitForm()
+      // Wait for ConfirmPayStep
+      await waitFor(
+        () =>
+          expect(screen.getByRole('heading', { level: 2, name: /review & pay/i })).not.toBeNull(),
+        { timeout: 3000 }
+      )
+      // Click Back
+      await user.click(screen.getByRole('button', { name: /^back$/i }))
+      // TravellerForm should re-appear pre-filled
+      await waitFor(
+        () => {
+          expect((screen.getByLabelText(/first name/i) as HTMLInputElement).value).toBe('Jane')
+          expect((screen.getByLabelText(/email address/i) as HTMLInputElement).value).toBe(
+            'jane@example.com'
+          )
+        },
+        { timeout: 3000 }
+      )
+    })
+
+    it('marks all three steps as complete after payment', async () => {
+      const user = await fillAndSubmitForm()
+      await fillCardAndPay(user)
+      await waitFor(
+        () => {
+          const items = screen.getAllByRole('listitem')
+          expect(items[0].getAttribute('data-status')).toBe('complete')
+          expect(items[1].getAttribute('data-status')).toBe('complete')
+          expect(items[2].getAttribute('data-status')).toBe('complete')
+        },
+        { timeout: 4000 }
       )
     })
   })

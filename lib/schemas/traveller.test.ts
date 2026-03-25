@@ -5,6 +5,7 @@ const VALID = {
   lastName: 'Smith',
   email: 'jane@example.com',
   phone: '+44 7700 900000',
+  numberOfTravellers: 2,
 }
 
 describe('TravellerDetailsSchema', () => {

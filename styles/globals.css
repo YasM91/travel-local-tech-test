@@ -6,7 +6,7 @@
    Never hardcode hex values in components — reference var(--color-brand-*).
    ============================================================================ */
 @theme {
-  --font-sans: 'Roboto', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
   /* TravelLocal Brand Palette */
   --color-brand: #0f766e; /* primary CTA (Teal) */
@@ -67,17 +67,21 @@ body {
   @apply border-error focus:ring-error focus:border-error bg-red-50;
 }
 
+.input:disabled {
+  @apply bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200;
+}
+
 .error-text {
   @apply text-sm text-error font-medium mt-1 flex items-center gap-1 animate-fade-in;
 }
 
 /* --- Buttons --- */
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all disabled:cursor-not-allowed;
 }
 
 .btn-primary {
-  @apply btn px-6 py-3 text-base bg-brand text-white hover:bg-brand-dark shadow-md hover:shadow-lg focus-visible:ring-4 focus-visible:ring-brand-light focus-visible:outline-none;
+  @apply btn px-6 py-3 text-base bg-brand text-white hover:bg-brand-dark shadow-md hover:shadow-lg focus-visible:ring-4 focus-visible:ring-brand-light focus-visible:outline-none disabled:opacity-50;
 }
 
 .btn-secondary {
@@ -90,7 +94,7 @@ body {
 }
 
 /* ============================================================================
-   EMOTIONAL DESIGN & UX INTERACTIONS 
+   EMOTIONAL DESIGN & UX INTERACTIONS
    ============================================================================ */
 
 /* Fade in animation for form steps */
@@ -112,38 +116,97 @@ body {
 [aria-busy='true'] {
   @apply relative cursor-wait opacity-80 pointer-events-none;
 }
-[aria-busy='true']::after {
-  content: '';
-  position: absolute;
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-@keyframes spin {
-  to {
-    transform: translateY(-50%) rotate(360deg);
-  }
-}
 
 /* Interactive feedback: scale on active press */
 .btn:not(:disabled):not([aria-busy='true']):active {
   transform: scale(0.98);
 }
 
-/* Respect reduced-motion preferences */
+/* ============================================================================
+   STEP INDICATOR — CELEBRATION ANIMATION
+   Applied to the final step circle when all steps are complete (allComplete).
+   ============================================================================ */
+
+@keyframes step-pop {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.3);
+  }
+  65% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes step-ring-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(15, 118, 110, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0);
+  }
+}
+
+.step-celebrate {
+  animation:
+    step-pop 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) 0.1s both,
+    step-ring-pulse 1s ease-out 0.3s 3;
+}
+
+/* ============================================================================
+   CONFETTI — SUCCESS SCREEN
+   Two variants for alternating clockwise / counter-clockwise rotation.
+   ============================================================================ */
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(300px) rotate(540deg);
+  }
+}
+
+@keyframes confetti-fall-ccw {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(300px) rotate(-540deg);
+  }
+}
+
+/* ============================================================================
+   REDUCED MOTION — Respect user preferences (WCAG 2.3.3)
+   ============================================================================ */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
-  [aria-busy='true']::after {
+  [aria-busy='true']::after,
+  .step-celebrate {
     animation: none;
   }
   .btn {
     transition: none;
+  }
+  /* Confetti particles carry data-confetti on their parent wrapper */
+  [data-confetti] * {
+    animation: none !important;
   }
 }

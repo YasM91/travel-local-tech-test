@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import StepIndicator from './StepIndicator'
 import type { Step } from '../lib/booking-steps'
 
@@ -80,6 +81,44 @@ describe('StepIndicator', () => {
       const items = screen.getAllByRole('listitem')
       expect(items[1].getAttribute('data-status')).toBe('upcoming')
       expect(items[2].getAttribute('data-status')).toBe('upcoming')
+    })
+  })
+
+  describe('Back-navigation — clickable completed steps', () => {
+    it('renders no buttons when onStepClick is not provided', () => {
+      render(<StepIndicator steps={STEPS} currentStep={3} />)
+      expect(screen.queryAllByRole('button')).toHaveLength(0)
+    })
+
+    it('renders a button for each completed step when onStepClick is provided', () => {
+      render(<StepIndicator steps={STEPS} currentStep={3} onStepClick={vi.fn()} />)
+      // currentStep=3 → steps 1 and 2 are complete
+      expect(screen.getAllByRole('button')).toHaveLength(2)
+    })
+
+    it('does not render a button for the current or upcoming steps', () => {
+      render(<StepIndicator steps={STEPS} currentStep={2} onStepClick={vi.fn()} />)
+      // currentStep=2 → only step 1 is complete
+      expect(screen.getAllByRole('button')).toHaveLength(1)
+    })
+
+    it('calls onStepClick with the correct 1-based step number', async () => {
+      const onStepClick = vi.fn()
+      const user = userEvent.setup()
+      render(<StepIndicator steps={STEPS} currentStep={3} onStepClick={onStepClick} />)
+      // Two buttons: "Your Trip…" (step 1) and "Traveller Details…" (step 2).
+      const buttons = screen.getAllByRole('button')
+      await user.click(buttons[0])
+      expect(onStepClick).toHaveBeenCalledWith(1)
+    })
+
+    it('calls onStepClick with step 2 when the second completed step is clicked', async () => {
+      const onStepClick = vi.fn()
+      const user = userEvent.setup()
+      render(<StepIndicator steps={STEPS} currentStep={3} onStepClick={onStepClick} />)
+      const buttons = screen.getAllByRole('button')
+      await user.click(buttons[1])
+      expect(onStepClick).toHaveBeenCalledWith(2)
     })
   })
 

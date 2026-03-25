@@ -5,6 +5,17 @@ type StepStatus = 'complete' | 'current' | 'upcoming'
 type Props = {
   steps: Step[]
   currentStep: number // 1-based
+  /**
+   * When true, applies a pop + ring-pulse celebration animation to the final
+   * step circle (used when all steps are complete after payment confirmation).
+   */
+  allComplete?: boolean
+  /**
+   * When provided, completed steps are rendered as interactive <button>
+   * elements so the user can navigate back via the progress header.
+   * Called with the 1-based step number of the step that was clicked.
+   */
+  onStepClick?: (stepNumber: number) => void
 }
 
 // Hoisted at module level — never recreated on re-render.
@@ -26,7 +37,12 @@ const labelClass: Record<StepStatus, string> = {
   upcoming: 'text-gray-400',
 }
 
-export default function StepIndicator({ steps, currentStep }: Props) {
+export default function StepIndicator({
+  steps,
+  currentStep,
+  allComplete = false,
+  onStepClick,
+}: Props) {
   return (
     <nav aria-label="Booking progress">
       <ol className="flex items-start" role="list">
@@ -34,30 +50,21 @@ export default function StepIndicator({ steps, currentStep }: Props) {
           const status = getStatus(index, currentStep)
           const stepNumber = index + 1
           const isLast = index === steps.length - 1
+          const isClickable = status === 'complete' && !!onStepClick
 
-          return (
-            <li
-              key={step.label}
-              className="flex flex-1 flex-col items-center relative text-center"
-              data-status={status}
-              aria-current={status === 'current' ? 'step' : undefined}
-            >
-              {!isLast ? (
-                <span
-                  aria-hidden="true"
-                  className={[
-                    'absolute top-[1.125rem] left-1/2 w-full h-0.5 z-0 transition-colors',
-                    status === 'complete' ? 'bg-brand' : 'bg-gray-200',
-                  ].join(' ')}
-                />
-              ) : null}
-
+          // The circle and label are shared between the clickable and
+          // non-clickable renders — extracted to avoid duplication.
+          const stepContent = (
+            <>
               <span
                 aria-hidden="true"
                 className={[
                   'relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 text-sm font-semibold transition-colors',
                   circleClass[status],
-                ].join(' ')}
+                  allComplete && isLast ? 'step-celebrate' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               >
                 {status === 'complete' ? (
                   <svg
@@ -84,6 +91,40 @@ export default function StepIndicator({ steps, currentStep }: Props) {
                 </span>
                 <span className="text-xs text-gray-400">{step.description}</span>
               </span>
+            </>
+          )
+
+          return (
+            <li
+              key={step.label}
+              className="flex flex-1 flex-col items-center relative text-center"
+              data-status={status}
+              aria-current={status === 'current' ? 'step' : undefined}
+            >
+              {!isLast ? (
+                <span
+                  aria-hidden="true"
+                  className={[
+                    'absolute top-4.5 left-1/2 w-full h-0.5 z-0 transition-colors',
+                    status === 'complete' ? 'bg-brand' : 'bg-gray-200',
+                  ].join(' ')}
+                />
+              ) : null}
+
+              {isClickable ? (
+                // Completed step — interactive so the user can jump back.
+                // The button's accessible name comes from the visible label
+                // text inside it (e.g. "Your Trip Choose your experience").
+                <button
+                  type="button"
+                  onClick={() => onStepClick!(stepNumber)}
+                  className="flex flex-col items-center w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 rounded-md cursor-pointer"
+                >
+                  {stepContent}
+                </button>
+              ) : (
+                <div className="flex flex-col items-center w-full">{stepContent}</div>
+              )}
             </li>
           )
         })}

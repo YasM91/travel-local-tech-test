@@ -8,6 +8,8 @@ const EMPTY_DEFAULTS: TravellerDetailsFormData = {
   lastName: '',
   email: '',
   phone: '',
+  // 0 fails min(1) so submitting without change triggers a validation error.
+  numberOfTravellers: 0,
 }
 
 const VALID_DATA: TravellerDetailsFormData = {
@@ -15,6 +17,7 @@ const VALID_DATA: TravellerDetailsFormData = {
   lastName: 'Smith',
   email: 'jane@example.com',
   phone: '+44 7700 900000',
+  numberOfTravellers: 2,
 }
 
 const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -38,10 +41,14 @@ describe('TravellerForm', () => {
       expect(screen.getByLabelText(/last name/i)).not.toBeNull()
       expect(screen.getByLabelText(/email address/i)).not.toBeNull()
       expect(screen.getByLabelText(/phone number/i)).not.toBeNull()
+      expect(screen.getByLabelText(/number of travellers/i)).not.toBeNull()
     })
 
     it('marks all inputs as aria-required', () => {
       render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      screen.getAllByRole('spinbutton').forEach((input) => {
+        expect(input.getAttribute('aria-required')).toBe('true')
+      })
       screen.getAllByRole('textbox').forEach((input) => {
         expect(input.getAttribute('aria-required')).toBe('true')
       })
@@ -59,84 +66,246 @@ describe('TravellerForm', () => {
     })
   })
 
-  describe('Validation errors — empty submit', () => {
-    async function submitEmpty() {
+  describe('Mobile keyboard optimisation', () => {
+    it('email input has inputMode="email" for mobile keyboard optimisation', () => {
+      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      expect(screen.getByLabelText(/email address/i).getAttribute('inputmode')).toBe('email')
+    })
+
+    it('phone input has type="tel" for numeric keyboard on mobile', () => {
+      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      expect(screen.getByLabelText(/phone number/i).getAttribute('type')).toBe('tel')
+    })
+
+    it('numberOfTravellers input has type="number" and inputMode="numeric"', () => {
+      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      const input = screen.getByLabelText(/number of travellers/i)
+      expect(input.getAttribute('type')).toBe('number')
+      expect(input.getAttribute('inputmode')).toBe('numeric')
+    })
+  })
+
+  describe('Button gating — disabled state mirrors ConfirmPayStep', () => {
+    it('disables the button when all fields are empty', () => {
+      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      expect(
+        screen.getByRole('button', { name: /continue to payment/i }).hasAttribute('disabled')
+      ).toBe(true)
+    })
+
+    it('keeps the button disabled when only first name is filled', async () => {
       const user = userEvent.setup()
       render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      await user.type(screen.getByLabelText(/first name/i), 'Jane')
+      expect(
+        screen.getByRole('button', { name: /continue to payment/i }).hasAttribute('disabled')
+      ).toBe(true)
+    })
+
+    it('enables the button once all required fields have content', async () => {
+      const user = userEvent.setup()
+      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      await user.type(screen.getByLabelText(/first name/i), VALID_DATA.firstName)
+      await user.type(screen.getByLabelText(/last name/i), VALID_DATA.lastName)
+      await user.type(screen.getByLabelText(/email address/i), VALID_DATA.email)
+      await user.type(screen.getByLabelText(/phone number/i), VALID_DATA.phone)
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(
+        screen.getByLabelText(/number of travellers/i),
+        String(VALID_DATA.numberOfTravellers)
+      )
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /continue to payment/i }).hasAttribute('disabled')
+        ).toBe(false)
+      })
+    })
+  })
+
+  describe('Validation errors — invalid values (button enabled, Zod fires on submit)', () => {
+    /** Fill all fields so the button is active, then override one to an invalid value. */
+    async function fillAllThenSubmitWith(overrides: Partial<typeof VALID_DATA>) {
+      const user = userEvent.setup()
+      const data = { ...VALID_DATA, ...overrides }
+      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      await user.type(screen.getByLabelText(/first name/i), data.firstName)
+      await user.type(screen.getByLabelText(/last name/i), data.lastName)
+      await user.type(screen.getByLabelText(/email address/i), data.email)
+      await user.type(screen.getByLabelText(/phone number/i), data.phone)
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(
+        screen.getByLabelText(/number of travellers/i),
+        String(data.numberOfTravellers)
+      )
       await user.click(screen.getByRole('button', { name: /continue to payment/i }))
     }
 
-    it('shows a required error for first name', async () => {
-      await submitEmpty()
-      await waitFor(() => expect(screen.getByText('First name is required')).not.toBeNull())
+    it('shows an email format error for a non-email string', async () => {
+      await fillAllThenSubmitWith({ email: 'not-an-email' })
+      await waitFor(() => expect(screen.getByText('Enter a valid email address')).not.toBeNull())
     })
 
-    it('shows a required error for last name', async () => {
-      await submitEmpty()
-      await waitFor(() => expect(screen.getByText('Last name is required')).not.toBeNull())
+    it('shows a phone format error for a too-short number string', async () => {
+      await fillAllThenSubmitWith({ phone: 'abc' })
+      await waitFor(() => expect(screen.getByText('Enter a valid phone number')).not.toBeNull())
     })
 
-    it('shows a required error for email', async () => {
-      await submitEmpty()
-      await waitFor(() => expect(screen.getByText('Email address is required')).not.toBeNull())
-    })
-
-    it('shows a required error for phone', async () => {
-      await submitEmpty()
-      await waitFor(() => expect(screen.getByText('Phone number is required')).not.toBeNull())
-    })
-
-    it('sets aria-invalid="true" on firstName when invalid', async () => {
-      await submitEmpty()
-      await waitFor(() => {
-        expect(screen.getByLabelText(/first name/i).getAttribute('aria-invalid')).toBe('true')
-      })
-    })
-
-    it('sets aria-invalid="true" on email when invalid', async () => {
-      await submitEmpty()
+    it('sets aria-invalid="true" on the email input when format is wrong', async () => {
+      await fillAllThenSubmitWith({ email: 'not-an-email' })
       await waitFor(() => {
         expect(screen.getByLabelText(/email address/i).getAttribute('aria-invalid')).toBe('true')
       })
     })
 
-    it('links error message to input via aria-describedby', async () => {
-      await submitEmpty()
+    it('links the email error message to the input via aria-describedby', async () => {
+      await fillAllThenSubmitWith({ email: 'not-an-email' })
       await waitFor(() => {
-        const input = screen.getByLabelText(/first name/i)
+        const input = screen.getByLabelText(/email address/i)
         const errorId = input.getAttribute('aria-describedby')
-        expect(errorId).toBe('firstName-error')
+        expect(errorId).toBe('email-error')
         expect(document.getElementById(errorId!)).not.toBeNull()
       })
     })
   })
 
-  describe('Validation errors — invalid values', () => {
-    it('shows an email format error for a non-email string', async () => {
+  describe('Focus management on validation failure (WCAG 2.4.3)', () => {
+    // The button is only enabled once all fields have content, so focus
+    // management is tested with all fields filled but one value invalid.
+
+    it('focuses the email field when email format is invalid', async () => {
       const user = userEvent.setup()
       render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      await user.type(screen.getByLabelText(/first name/i), 'Jane')
+      await user.type(screen.getByLabelText(/last name/i), 'Smith')
       await user.type(screen.getByLabelText(/email address/i), 'not-an-email')
+      await user.type(screen.getByLabelText(/phone number/i), VALID_DATA.phone)
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(
+        screen.getByLabelText(/number of travellers/i),
+        String(VALID_DATA.numberOfTravellers)
+      )
       await user.click(screen.getByRole('button', { name: /continue to payment/i }))
-      await waitFor(() => expect(screen.getByText('Enter a valid email address')).not.toBeNull())
+      await waitFor(() => {
+        expect(document.activeElement).toBe(screen.getByLabelText(/email address/i))
+      })
     })
 
-    it('shows a phone format error for a non-numeric string', async () => {
+    it('focuses the phone field when phone format is invalid', async () => {
       const user = userEvent.setup()
       render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      await user.type(screen.getByLabelText(/first name/i), 'Jane')
+      await user.type(screen.getByLabelText(/last name/i), 'Smith')
+      await user.type(screen.getByLabelText(/email address/i), VALID_DATA.email)
       await user.type(screen.getByLabelText(/phone number/i), 'abc')
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(
+        screen.getByLabelText(/number of travellers/i),
+        String(VALID_DATA.numberOfTravellers)
+      )
       await user.click(screen.getByRole('button', { name: /continue to payment/i }))
-      await waitFor(() => expect(screen.getByText('Enter a valid phone number')).not.toBeNull())
+      await waitFor(() => {
+        expect(document.activeElement).toBe(screen.getByLabelText(/phone number/i))
+      })
+    })
+  })
+
+  describe('Submission failure (unhappy path)', () => {
+    it('shows an error banner when submission fails', async () => {
+      const user = userEvent.setup()
+      render(
+        <TravellerForm
+          defaults={EMPTY_DEFAULTS}
+          onSuccess={vi.fn()}
+          submitDelay={0}
+          failureRate={1}
+        />
+      )
+      await user.type(screen.getByLabelText(/first name/i), VALID_DATA.firstName)
+      await user.type(screen.getByLabelText(/last name/i), VALID_DATA.lastName)
+      await user.type(screen.getByLabelText(/email address/i), VALID_DATA.email)
+      await user.type(screen.getByLabelText(/phone number/i), VALID_DATA.phone)
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(
+        screen.getByLabelText(/number of travellers/i),
+        String(VALID_DATA.numberOfTravellers)
+      )
+      await user.click(screen.getByRole('button', { name: /continue to payment/i }))
+      await waitFor(() => expect(screen.getByText(/something went wrong/i)).not.toBeNull())
+    })
+
+    it('error banner has role="alert" so screen readers announce it immediately', async () => {
+      const user = userEvent.setup()
+      render(
+        <TravellerForm
+          defaults={EMPTY_DEFAULTS}
+          onSuccess={vi.fn()}
+          submitDelay={0}
+          failureRate={1}
+        />
+      )
+      await user.type(screen.getByLabelText(/first name/i), VALID_DATA.firstName)
+      await user.type(screen.getByLabelText(/last name/i), VALID_DATA.lastName)
+      await user.type(screen.getByLabelText(/email address/i), VALID_DATA.email)
+      await user.type(screen.getByLabelText(/phone number/i), VALID_DATA.phone)
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(
+        screen.getByLabelText(/number of travellers/i),
+        String(VALID_DATA.numberOfTravellers)
+      )
+      await user.click(screen.getByRole('button', { name: /continue to payment/i }))
+      await waitFor(() => {
+        const banner = screen.getByText(/something went wrong/i).closest('[role="alert"]')
+        expect(banner).not.toBeNull()
+      })
+    })
+
+    it('does not call onSuccess when submission fails', async () => {
+      const onSuccess = vi.fn()
+      const user = userEvent.setup()
+      render(
+        <TravellerForm
+          defaults={EMPTY_DEFAULTS}
+          onSuccess={onSuccess}
+          submitDelay={0}
+          failureRate={1}
+        />
+      )
+      await user.type(screen.getByLabelText(/first name/i), VALID_DATA.firstName)
+      await user.type(screen.getByLabelText(/last name/i), VALID_DATA.lastName)
+      await user.type(screen.getByLabelText(/email address/i), VALID_DATA.email)
+      await user.type(screen.getByLabelText(/phone number/i), VALID_DATA.phone)
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(
+        screen.getByLabelText(/number of travellers/i),
+        String(VALID_DATA.numberOfTravellers)
+      )
+      await user.click(screen.getByRole('button', { name: /continue to payment/i }))
+      await waitFor(() => expect(screen.getByText(/something went wrong/i)).not.toBeNull())
+      expect(onSuccess).not.toHaveBeenCalled()
     })
   })
 
   describe('Successful submission', () => {
     async function fillAndSubmit(onSuccess = vi.fn()) {
       const user = userEvent.setup()
-      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={onSuccess} submitDelay={0} />)
+      // failureRate={0} prevents flaky test failures from the 5% simulation.
+      render(
+        <TravellerForm
+          defaults={EMPTY_DEFAULTS}
+          onSuccess={onSuccess}
+          submitDelay={0}
+          failureRate={0}
+        />
+      )
       await user.type(screen.getByLabelText(/first name/i), VALID_DATA.firstName)
       await user.type(screen.getByLabelText(/last name/i), VALID_DATA.lastName)
       await user.type(screen.getByLabelText(/email address/i), VALID_DATA.email)
       await user.type(screen.getByLabelText(/phone number/i), VALID_DATA.phone)
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(
+        screen.getByLabelText(/number of travellers/i),
+        String(VALID_DATA.numberOfTravellers)
+      )
       await user.click(screen.getByRole('button', { name: /continue to payment/i }))
       return { onSuccess }
     }
@@ -154,11 +323,23 @@ describe('TravellerForm', () => {
     it('shows the loading state then resolves', async () => {
       const user = userEvent.setup()
       const onSuccess = vi.fn()
-      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={onSuccess} submitDelay={50} />)
+      render(
+        <TravellerForm
+          defaults={EMPTY_DEFAULTS}
+          onSuccess={onSuccess}
+          submitDelay={50}
+          failureRate={0}
+        />
+      )
       await user.type(screen.getByLabelText(/first name/i), VALID_DATA.firstName)
       await user.type(screen.getByLabelText(/last name/i), VALID_DATA.lastName)
       await user.type(screen.getByLabelText(/email address/i), VALID_DATA.email)
       await user.type(screen.getByLabelText(/phone number/i), VALID_DATA.phone)
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(
+        screen.getByLabelText(/number of travellers/i),
+        String(VALID_DATA.numberOfTravellers)
+      )
       await user.click(screen.getByRole('button', { name: /continue to payment/i }))
 
       await waitFor(() => {
@@ -169,6 +350,58 @@ describe('TravellerForm', () => {
 
       await waitFor(() => expect(onSuccess).toHaveBeenCalled())
     })
+
+    it('disables all inputs while the form is submitting', async () => {
+      const user = userEvent.setup()
+      render(
+        <TravellerForm
+          defaults={EMPTY_DEFAULTS}
+          onSuccess={vi.fn()}
+          submitDelay={200}
+          failureRate={0}
+        />
+      )
+      await user.type(screen.getByLabelText(/first name/i), VALID_DATA.firstName)
+      await user.type(screen.getByLabelText(/last name/i), VALID_DATA.lastName)
+      await user.type(screen.getByLabelText(/email address/i), VALID_DATA.email)
+      await user.type(screen.getByLabelText(/phone number/i), VALID_DATA.phone)
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(
+        screen.getByLabelText(/number of travellers/i),
+        String(VALID_DATA.numberOfTravellers)
+      )
+      await user.click(screen.getByRole('button', { name: /continue to payment/i }))
+
+      await waitFor(() => {
+        expect((screen.getByLabelText(/first name/i) as HTMLInputElement).disabled).toBe(true)
+        expect((screen.getByLabelText(/last name/i) as HTMLInputElement).disabled).toBe(true)
+        expect((screen.getByLabelText(/email address/i) as HTMLInputElement).disabled).toBe(true)
+        expect((screen.getByLabelText(/phone number/i) as HTMLInputElement).disabled).toBe(true)
+        expect((screen.getByLabelText(/number of travellers/i) as HTMLInputElement).disabled).toBe(
+          true
+        )
+      })
+    })
+  })
+
+  describe('Back button', () => {
+    it('is not rendered when onBack is not provided', () => {
+      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
+      expect(screen.queryByRole('button', { name: /back/i })).toBeNull()
+    })
+
+    it('is rendered when onBack is provided', () => {
+      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} onBack={vi.fn()} />)
+      expect(screen.getByRole('button', { name: /back/i })).not.toBeNull()
+    })
+
+    it('calls onBack when clicked', async () => {
+      const onBack = vi.fn()
+      const user = userEvent.setup()
+      render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} onBack={onBack} />)
+      await user.click(screen.getByRole('button', { name: /back/i }))
+      expect(onBack).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('Pre-filled defaults', () => {
@@ -178,6 +411,7 @@ describe('TravellerForm', () => {
       expect((screen.getByLabelText(/email address/i) as HTMLInputElement).value).toBe(
         'jane@example.com'
       )
+      expect((screen.getByLabelText(/number of travellers/i) as HTMLInputElement).value).toBe('2')
     })
   })
 })
