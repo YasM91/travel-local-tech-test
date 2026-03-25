@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import Head from 'next/head'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { z } from 'zod'
-import StepIndicator, { type Step } from '../components/StepIndicator'
-import TravellerForm, { type TravellerDetailsFormData } from '../components/TravellerForm'
+import { BOOKING_STEPS } from '../lib/booking-steps'
+import { useBookingFlow } from '../lib/use-booking-flow'
+import StepIndicator from '../components/StepIndicator'
+import TravellerForm from '../components/TravellerForm'
 import SuccessMessage from '../components/SuccessMessage'
 
 // ---------------------------------------------------------------------------
-// Zod schema — parse (not just validate) so only schema-valid data reaches
-// the render layer. Structurally prevents XSS from SSR props.
+// SSR schema — parse before rendering to prevent XSS from SSR props.
 // ---------------------------------------------------------------------------
 const BookingPagePropsSchema = z.object({
   trip: z.object({
@@ -27,9 +28,6 @@ const BookingPagePropsSchema = z.object({
 
 export type BookingPageProps = z.infer<typeof BookingPagePropsSchema>
 
-// ---------------------------------------------------------------------------
-// getServerSideProps
-// ---------------------------------------------------------------------------
 export const getServerSideProps: GetServerSideProps<BookingPageProps> = async () => {
   const raw = {
     trip: {
@@ -52,55 +50,56 @@ export const getServerSideProps: GetServerSideProps<BookingPageProps> = async ()
 }
 
 // ---------------------------------------------------------------------------
-// Static constants — hoisted at module level (rendering-hoist-jsx rule).
-// ---------------------------------------------------------------------------
-const BOOKING_STEPS: Step[] = [
-  { label: 'Your Trip', description: 'Choose your experience' },
-  { label: 'Traveller Details', description: 'Tell us about you' },
-  { label: 'Confirm & Pay', description: 'Review and complete' },
-]
-
-const CURRENT_STEP = 2
-
-// ---------------------------------------------------------------------------
-// Page component
+// BookingPage — thin orchestration layer. All state lives in useBookingFlow.
+// Components receive only the slices of data they need.
 // ---------------------------------------------------------------------------
 export default function BookingPage({
   trip,
   defaults,
   promoMessage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [submittedData, setSubmittedData] = useState<TravellerDetailsFormData | null>(null)
+  const { currentStep, submittedData, onFormSuccess } = useBookingFlow()
+
+  const pageTitle = submittedData
+    ? 'Booking Confirmed — TravelLocal'
+    : 'Traveller Details — TravelLocal'
 
   return (
-    <main className="min-h-screen py-10 px-4">
-      <div className="card animate-fade-in">
-        <StepIndicator steps={BOOKING_STEPS} currentStep={CURRENT_STEP} />
+    <>
+      <Head>
+        <title>{pageTitle}</title>
+        <meta name="description" content="Complete your TravelLocal booking." />
+      </Head>
 
-        {submittedData ? (
-          <SuccessMessage data={submittedData} tripTitle={trip.title} />
-        ) : (
-          <>
-            <section aria-labelledby="trip-summary-heading" className="mt-8">
-              <h1
-                id="trip-summary-heading"
-                className="text-2xl font-bold text-gray-900 tracking-tight"
-              >
-                {trip.title}
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">{trip.destination}</p>
-              <p
-                role="status"
-                className="mt-4 inline-block rounded-lg bg-brand-faint text-brand px-3 py-1.5 text-sm font-medium"
-              >
-                {promoMessage}
-              </p>
-            </section>
+      <main className="min-h-screen py-10 px-4">
+        <div className="card animate-fade-in">
+          <StepIndicator steps={BOOKING_STEPS} currentStep={currentStep} />
 
-            <TravellerForm defaults={defaults} onSuccess={setSubmittedData} />
-          </>
-        )}
-      </div>
-    </main>
+          {submittedData ? (
+            <SuccessMessage data={submittedData} tripTitle={trip.title} />
+          ) : (
+            <>
+              <section aria-labelledby="trip-summary-heading" className="mt-8">
+                <h1
+                  id="trip-summary-heading"
+                  className="text-2xl font-bold text-gray-900 tracking-tight"
+                >
+                  {trip.title}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">{trip.destination}</p>
+                <p
+                  role="status"
+                  className="mt-4 inline-block rounded-lg bg-brand-faint text-brand px-3 py-1.5 text-sm font-medium"
+                >
+                  {promoMessage}
+                </p>
+              </section>
+
+              <TravellerForm defaults={defaults} onSuccess={onFormSuccess} />
+            </>
+          )}
+        </div>
+      </main>
+    </>
   )
 }

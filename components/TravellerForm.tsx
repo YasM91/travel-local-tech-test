@@ -1,22 +1,9 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { TravellerDetailsSchema, type TravellerDetailsFormData } from '../lib/schemas/traveller'
 
-// ---------------------------------------------------------------------------
-// Zod schema — single source of truth for validation and the TypeScript type.
-// ---------------------------------------------------------------------------
-export const TravellerDetailsSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().min(1, 'Email address is required').email('Enter a valid email address'),
-  phone: z
-    .string()
-    .min(1, 'Phone number is required')
-    .regex(/^\+?[\d\s\-(). ]{6,}$/, 'Enter a valid phone number'),
-})
-
-export type TravellerDetailsFormData = z.infer<typeof TravellerDetailsSchema>
+export type { TravellerDetailsFormData }
 
 type Props = {
   defaults: TravellerDetailsFormData
@@ -25,9 +12,6 @@ type Props = {
   submitDelay?: number
 }
 
-// ---------------------------------------------------------------------------
-// Field helper — keeps the JSX DRY without premature abstraction.
-// ---------------------------------------------------------------------------
 type FieldProps = {
   id: string
   label: string
@@ -65,9 +49,6 @@ function Field({ id, label, type = 'text', autoComplete, error, registration }: 
   )
 }
 
-// ---------------------------------------------------------------------------
-// TravellerForm
-// ---------------------------------------------------------------------------
 export default function TravellerForm({ defaults, onSuccess, submitDelay = 1000 }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -97,7 +78,6 @@ export default function TravellerForm({ defaults, onSuccess, submitDelay = 1000 
     >
       <fieldset className="border-0 p-0 m-0">
         <legend className="text-lg font-bold text-gray-900 mb-1">Your Details</legend>
-        {/* WCAG 3.3.2 — explicit explanation of the required-field indicator */}
         <p className="text-sm text-gray-500 mb-6">
           Fields marked <span aria-hidden="true">*</span> are required.
         </p>

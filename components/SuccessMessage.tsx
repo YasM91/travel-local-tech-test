@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { TravellerDetailsFormData } from './TravellerForm'
+import type { TravellerDetailsFormData } from '../lib/schemas/traveller'
 
 type Props = {
   data: TravellerDetailsFormData
@@ -20,11 +20,9 @@ export default function SuccessMessage({ data, tripTitle }: Props) {
       ref={sectionRef}
       aria-labelledby="success-heading"
       className="py-8 text-center animate-fade-in"
-      // tabIndex={-1} allows programmatic focus without entering the tab order
       tabIndex={-1}
       style={{ outline: 'none' }}
     >
-      {/* Icon */}
       <span
         aria-hidden="true"
         className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-faint text-brand mb-6"
@@ -52,7 +50,6 @@ export default function SuccessMessage({ data, tripTitle }: Props) {
         <span className="font-semibold text-gray-700">{tripTitle}</span>.
       </p>
 
-      {/* Summary */}
       <dl className="text-left max-w-xs mx-auto space-y-3 rounded-xl bg-gray-50 border border-gray-200 p-5">
         <div className="flex justify-between gap-4">
           <dt className="text-sm font-semibold text-gray-500">Name</dt>

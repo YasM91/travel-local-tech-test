@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import SuccessMessage from './SuccessMessage'
-import type { TravellerDetailsFormData } from './TravellerForm'
+import type { TravellerDetailsFormData } from '../lib/schemas/traveller'
 
 const DATA: TravellerDetailsFormData = {
   firstName: 'Jane',

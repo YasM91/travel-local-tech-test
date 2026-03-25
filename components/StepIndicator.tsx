@@ -1,7 +1,4 @@
-export type Step = {
-  label: string
-  description: string
-}
+import type { Step } from '../lib/booking-steps'
 
 type StepStatus = 'complete' | 'current' | 'upcoming'
 
@@ -10,7 +7,7 @@ type Props = {
   currentStep: number // 1-based
 }
 
-// Hoisted at module level — never recreated on re-render (rendering-hoist-jsx).
+// Hoisted at module level — never recreated on re-render.
 function getStatus(index: number, currentStep: number): StepStatus {
   if (index + 1 < currentStep) return 'complete'
   if (index + 1 === currentStep) return 'current'
@@ -45,7 +42,6 @@ export default function StepIndicator({ steps, currentStep }: Props) {
               data-status={status}
               aria-current={status === 'current' ? 'step' : undefined}
             >
-              {/* Connector line */}
               {!isLast ? (
                 <span
                   aria-hidden="true"
@@ -56,7 +52,6 @@ export default function StepIndicator({ steps, currentStep }: Props) {
                 />
               ) : null}
 
-              {/* Circle badge */}
               <span
                 aria-hidden="true"
                 className={[
@@ -83,7 +78,6 @@ export default function StepIndicator({ steps, currentStep }: Props) {
                 )}
               </span>
 
-              {/* Labels */}
               <span className="flex flex-col mt-2 gap-0.5">
                 <span className={['text-[0.8125rem] font-semibold', labelClass[status]].join(' ')}>
                   {step.label}

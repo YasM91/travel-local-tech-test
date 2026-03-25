@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import TravellerForm, { type TravellerDetailsFormData } from './TravellerForm'
+import TravellerForm from './TravellerForm'
+import type { TravellerDetailsFormData } from '../lib/schemas/traveller'
 
 const EMPTY_DEFAULTS: TravellerDetailsFormData = {
   firstName: '',
@@ -16,7 +17,6 @@ const VALID_DATA: TravellerDetailsFormData = {
   phone: '+44 7700 900000',
 }
 
-// Silence console.log during submission tests
 const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 afterAll(() => consoleSpy.mockRestore())
 
@@ -42,8 +42,7 @@ describe('TravellerForm', () => {
 
     it('marks all inputs as aria-required', () => {
       render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
-      const inputs = screen.getAllByRole('textbox')
-      inputs.forEach((input) => {
+      screen.getAllByRole('textbox').forEach((input) => {
         expect(input.getAttribute('aria-required')).toBe('true')
       })
     })
@@ -65,7 +64,6 @@ describe('TravellerForm', () => {
       const user = userEvent.setup()
       render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={vi.fn()} />)
       await user.click(screen.getByRole('button', { name: /continue to payment/i }))
-      return { user }
     }
 
     it('shows a required error for first name', async () => {
@@ -132,7 +130,6 @@ describe('TravellerForm', () => {
   })
 
   describe('Successful submission', () => {
-    // submitDelay=0 removes the real 1 s wait — no fake timers needed.
     async function fillAndSubmit(onSuccess = vi.fn()) {
       const user = userEvent.setup()
       render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={onSuccess} submitDelay={0} />)
@@ -144,12 +141,12 @@ describe('TravellerForm', () => {
       return { onSuccess }
     }
 
-    it('calls onSuccess with the validated payload after the delay', async () => {
+    it('calls onSuccess with the validated payload', async () => {
       const { onSuccess } = await fillAndSubmit()
       await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(VALID_DATA))
     })
 
-    it('logs the payload to console on submission', async () => {
+    it('logs the payload to console', async () => {
       await fillAndSubmit()
       await waitFor(() => expect(consoleSpy).toHaveBeenCalledWith('Booking payload:', VALID_DATA))
     })
@@ -157,7 +154,6 @@ describe('TravellerForm', () => {
     it('shows the loading state then resolves', async () => {
       const user = userEvent.setup()
       const onSuccess = vi.fn()
-      // Use a short but non-zero delay so we can catch the loading state
       render(<TravellerForm defaults={EMPTY_DEFAULTS} onSuccess={onSuccess} submitDelay={50} />)
       await user.type(screen.getByLabelText(/first name/i), VALID_DATA.firstName)
       await user.type(screen.getByLabelText(/last name/i), VALID_DATA.lastName)
@@ -165,14 +161,12 @@ describe('TravellerForm', () => {
       await user.type(screen.getByLabelText(/phone number/i), VALID_DATA.phone)
       await user.click(screen.getByRole('button', { name: /continue to payment/i }))
 
-      // Immediately after click — should be loading
       await waitFor(() => {
         const btn = screen.getByRole('button', { name: /confirming/i })
         expect(btn.getAttribute('aria-busy')).toBe('true')
         expect(btn.hasAttribute('disabled')).toBe(true)
       })
 
-      // After delay resolves — onSuccess should have been called
       await waitFor(() => expect(onSuccess).toHaveBeenCalled())
     })
   })
