@@ -1,14 +1,149 @@
-/* Minimal baseline only — layout, typography, and components are for you to build. */
+@import 'tailwindcss';
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+/* ============================================================================
+   DESIGN TOKENS (Tailwind v4 CSS-native @theme)
+   All brand colours, spacing, and radius values live here.
+   Never hardcode hex values in components — reference var(--color-brand-*).
+   ============================================================================ */
+@theme {
+  --font-sans: 'Roboto', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* TravelLocal Brand Palette */
+  --color-brand: #0f766e; /* primary CTA (Teal) */
+  --color-brand-dark: #0f5b55; /* hover state */
+  --color-brand-light: #14b8a6; /* secondary, icons */
+  --color-brand-faint: #ccfbf1; /* backgrounds, hover fills */
+
+  /* Semantic colours */
+  --color-success: #059669;
+  --color-error: #dc2626;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* Surfaces */
+  --color-surface: #ffffff;
+  --color-surface-raised: #f9fafb;
+  --color-surface-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Border radius scale */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+}
+
+/* ============================================================================
+   BASE & SCROLL
+   ============================================================================ */
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
-    sans-serif;
-  line-height: 1.5;
+  background-color: var(--color-surface-raised);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================================
+   REUSABLE COMPONENT CLASSES
+   ============================================================================ */
+
+/* --- Inputs & Forms --- */
+.form-group {
+  @apply flex flex-col gap-1.5 mb-5;
+}
+
+.label {
+  @apply text-sm font-semibold text-gray-700;
+}
+
+.input {
+  @apply w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand transition-colors;
+}
+
+.input[aria-invalid='true'] {
+  @apply border-error focus:ring-error focus:border-error bg-red-50;
+}
+
+.error-text {
+  @apply text-sm text-error font-medium mt-1 flex items-center gap-1 animate-fade-in;
+}
+
+/* --- Buttons --- */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply btn px-6 py-3 text-base bg-brand text-white hover:bg-brand-dark shadow-md hover:shadow-lg focus-visible:ring-4 focus-visible:ring-brand-light focus-visible:outline-none;
+}
+
+.btn-secondary {
+  @apply btn px-6 py-3 text-base bg-white text-gray-700 border border-gray-300 hover:border-brand-light hover:bg-gray-50 focus-visible:ring-4 focus-visible:ring-gray-200;
+}
+
+/* --- Cards & Layout --- */
+.card {
+  @apply bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 max-w-2xl mx-auto w-full;
+}
+
+/* ============================================================================
+   EMOTIONAL DESIGN & UX INTERACTIONS 
+   ============================================================================ */
+
+/* Fade in animation for form steps */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@utility animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Pending State for Form Submission (Behavioral Layer) */
+[aria-busy='true'] {
+  @apply relative cursor-wait opacity-80 pointer-events-none;
+}
+[aria-busy='true']::after {
+  content: '';
+  position: absolute;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+@keyframes spin {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+
+/* Interactive feedback: scale on active press */
+.btn:not(:disabled):not([aria-busy='true']):active {
+  transform: scale(0.98);
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  [aria-busy='true']::after {
+    animation: none;
+  }
+  .btn {
+    transition: none;
+  }
 }
