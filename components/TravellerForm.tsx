@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm, type SubmitErrorHandler } from 'react-hook-form'
+import { Resolver, useForm, type SubmitErrorHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { TravellerDetailsSchema, type TravellerDetailsFormData } from '../lib/schemas/traveller'
 
@@ -97,7 +97,7 @@ export default function TravellerForm({
     watch,
     formState: { errors },
   } = useForm<TravellerDetailsFormData>({
-    resolver: zodResolver(TravellerDetailsSchema) as any,
+    resolver: zodResolver(TravellerDetailsSchema) as Resolver<TravellerDetailsFormData>,
     defaultValues: defaults,
   })
 
