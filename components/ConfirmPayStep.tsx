@@ -46,7 +46,8 @@ export default function ConfirmPayStep({
     /^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry.replace(/\s/g, '')) &&
     /^\d{3,4}$/.test(cvc)
 
-  const price = `£${trip.pricePerPersonGbp.toLocaleString('en-GB')}`
+  const totalTripPrice = trip.pricePerPersonGbp * data.numberOfTravellers
+  const price = `£${totalTripPrice.toLocaleString('en-GB')}`
 
   const handlePay = async () => {
     if (!isCardValid) return
