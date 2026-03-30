@@ -240,5 +240,18 @@ describe('BookingPage', () => {
         { timeout: 4000 }
       )
     })
+
+    it('shows the correct total price for 2 travellers (2 × £2,499 = £4,998) in ConfirmPayStep', async () => {
+      const user = userEvent.setup()
+      render(<BookingPage {...BASE_PROPS} />)
+      await user.type(screen.getByLabelText(/first name/i), 'Jane')
+      await user.type(screen.getByLabelText(/last name/i), 'Smith')
+      await user.type(screen.getByLabelText(/email address/i), 'jane@example.com')
+      await user.type(screen.getByLabelText(/phone number/i), '+44 7700 900000')
+      await user.clear(screen.getByLabelText(/number of travellers/i))
+      await user.type(screen.getByLabelText(/number of travellers/i), '2')
+      await user.click(screen.getByRole('button', { name: /continue to payment/i }))
+      await waitFor(() => expect(screen.getByText('£4,998')).not.toBeNull(), { timeout: 3000 })
+    })
   })
 })
