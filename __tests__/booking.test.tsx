@@ -251,7 +251,10 @@ describe('BookingPage', () => {
       await user.clear(screen.getByLabelText(/number of travellers/i))
       await user.type(screen.getByLabelText(/number of travellers/i), '2')
       await user.click(screen.getByRole('button', { name: /continue to payment/i }))
-      await waitFor(() => expect(screen.getByText('£4,998')).not.toBeNull(), { timeout: 3000 })
+      await waitFor(
+        () => expect(screen.getByRole('button', { name: /pay £4,998/i })).not.toBeNull(),
+        { timeout: 3000 }
+      )
     })
   })
 })
